@@ -1,0 +1,33 @@
+# Dossiers générés par Unity (NE PAS PUSHER)
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+
+# Dossiers générés par l'éditeur de code
+.vs/
+.vscode/
+
+# Fichiers de configuration et caches
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Fichiers spécifiques Unity
+Library/ArtifactDB
+Library/LastSceneManagerSetup.txt
+Library/BuildPlayer.prefs
