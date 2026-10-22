@@ -2,144 +2,151 @@ using UnityEngine;
 
 public class GuardFSM : MonoBehaviour
 {
-    // Références
-    public Transform bandit;
-    public GridGenerator grid;
-    public AStarPathfinding pathfinding; // Pour utiliser A* dans chaque état
+    // --- RÉFÉRENCES ---
+    public Transform bandit;                  // La cible (PP dans le cours)
+    public AStarPathfinding pathfinding;      // Pour utiliser A* dans les états
+    public Transform[] patrolWaypoints;       // Points de patrouille
 
-    // Paramètres de détection
-    public float viewDistance = 10f;
-    public float hearDistance = 5f;
-    public float dangerDistance = 2f;
-    public float viewAngle = 90f;
+    // --- PARAMÈTRES DES ÉVÈNEMENTS (Adaptés en unités Unity) ---
+    // Event 1: distance > 15
+    public float distFar = 15f;
+    // Event 2: 8 < distance <= 15
+    public float distMedium = 8f;
+    // Event 3: 3 < distance <= 8
+    public float distClose = 3f;
+    // Event 4/6: distance <= 3 OU PP_attacking
 
-    // États
-    private enum GuardState { Patrol, Investigate, Chase, Flee }
-    private GuardState currentState = GuardState.Patrol;
+    // --- ÉTATS DE LA FSM (Diapo 9) ---
+    private enum State { Wait, Move, Follow, Attack, RunAway }
+    private State currentState = State.Wait;
 
-    // Waypoints de patrouille
-    public Transform[] patrolPoints;
-    private int currentPatrolIndex = 0;
+    // Variables internes
+    private int currentWaypointIndex = 0;
+    private float waitTimer = 0f;
+    public float waitDuration = 3f;
 
-    // Timer pour l'état Investigation
-    private float investigateTimer = 0f;
-    public float investigateDuration = 5f;
-    private Vector3 lastKnownBanditPosition;
+    void Start()
+    {
+        // Démarrage en attente
+        currentState = State.Wait;
+    }
 
     void Update()
     {
-        // 1. Détecter les stimuli
+        // 1. Calcul de la distance (Condition de base pour les événements)
         float distanceToBandit = Vector3.Distance(transform.position, bandit.position);
-        bool canSeeBandit = CanSeeTarget(bandit.position);
+        bool banditIsAttacking = bandit.GetComponent<BanditController>().isAttacking;
 
-        // 2. Machine à états (Logique de transition)
+        // 2. GESTION DES TRANSITIONS (Évènements du cours)
         switch (currentState)
         {
-            case GuardState.Patrol:
-                if (canSeeBandit && distanceToBandit < viewDistance)
+            case State.Wait:
+                waitTimer += Time.deltaTime;
+                if (waitTimer >= waitDuration)
                 {
-                    TransitionTo(GuardState.Chase);
+                    TransitionTo(State.Move);
                 }
-                else if (distanceToBandit < hearDistance)
+                else if (distanceToBandit <= distMedium) // Event 2
                 {
-                    lastKnownBanditPosition = bandit.position;
-                    TransitionTo(GuardState.Investigate);
-                }
-                break;
-
-            case GuardState.Investigate:
-                investigateTimer += Time.deltaTime;
-                if (canSeeBandit && distanceToBandit < viewDistance)
-                {
-                    TransitionTo(GuardState.Chase);
-                }
-                else if (investigateTimer > investigateDuration)
-                {
-                    TransitionTo(GuardState.Patrol);
+                    TransitionTo(State.Follow);
                 }
                 break;
 
-            case GuardState.Chase:
-                if (distanceToBandit < dangerDistance)
+            case State.Move: // Patrouille
+                if (distanceToBandit <= distMedium && distanceToBandit > distClose) // Event 2
                 {
-                    TransitionTo(GuardState.Flee);
+                    TransitionTo(State.Follow);
                 }
-                else if (distanceToBandit > viewDistance * 1.5f)
+                else if (distanceToBandit <= distClose) // Event 3
                 {
-                    TransitionTo(GuardState.Patrol);
+                    TransitionTo(State.Attack);
                 }
                 break;
 
-            case GuardState.Flee:
-                if (distanceToBandit > viewDistance)
+            case State.Follow: // Poursuite
+                if (distanceToBandit > distFar) // Event 1
                 {
-                    TransitionTo(GuardState.Patrol);
+                    TransitionTo(State.Move);
+                }
+                else if (distanceToBandit <= distClose) // Event 3
+                {
+                    TransitionTo(State.Attack);
+                }
+                break;
+
+            case State.Attack: // Attaque
+                if (banditIsAttacking || distanceToBandit <= distClose) // Event 6 ou 4
+                {
+                    TransitionTo(State.RunAway);
+                }
+                else if (distanceToBandit > distMedium) // Event 2 (le bandit s'est enfui)
+                {
+                    TransitionTo(State.Follow);
+                }
+                break;
+
+            case State.RunAway: // Fuite
+                if (distanceToBandit > distFar) // Event 1 (Hors de danger)
+                {
+                    TransitionTo(State.Move);
                 }
                 break;
         }
 
-        // 3. Exécuter le comportement de l'état actuel
+        // 3. EXÉCUTION DU COMPORTEMENT DE L'ÉTAT ACTUEL
         ExecuteStateBehavior();
     }
 
-    bool CanSeeTarget(Vector3 targetPos)
+    // --- GESTION DES TRANSITIONS ---
+    private void TransitionTo(State newState)
     {
-        Vector3 directionToTarget = (targetPos - transform.position).normalized;
-        float angle = Vector3.Angle(transform.forward, directionToTarget);
+        if (currentState == newState) return;
 
-        if (angle < viewAngle / 2f)
-        {
-            // Raycast pour vérifier s'il y a un obstacle entre le garde et le bandit
-            if (!Physics.Raycast(transform.position, directionToTarget, Vector3.Distance(transform.position, targetPos)))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    void TransitionTo(GuardState newState)
-    {
-        Debug.Log($"?? Garde passe de {currentState} à {newState}");
+        Debug.Log($"?? TRANSITION: {currentState}  --->  {newState}");
         currentState = newState;
-        investigateTimer = 0f;
-
-        // Ici, on pourra appeler pathfinding.FindPath() pour chaque état
+        waitTimer = 0f; // Reset du timer si on change d'état
     }
 
-    void ExecuteStateBehavior()
+    // --- COMPORTEMENTS DES ÉTATS ---
+    private void ExecuteStateBehavior()
     {
         switch (currentState)
         {
-            case GuardState.Patrol:
-                // Aller vers le prochain waypoint
-                MoveTo(patrolPoints[currentPatrolIndex].position);
-                if (Vector3.Distance(transform.position, patrolPoints[currentPatrolIndex].position) < 1f)
+            case State.Wait:
+                // Le garde ne fait rien, A* n'est pas sollicité
+                break;
+
+            case State.Move:
+                // Aller au prochain waypoint
+                if (patrolWaypoints.Length > 0)
                 {
-                    currentPatrolIndex = (currentPatrolIndex + 1) % patrolPoints.Length;
+                    pathfinding.MoveTo(patrolWaypoints[currentWaypointIndex].position);
+
+                    // Si on est arrivé au waypoint, passer au suivant
+                    if (pathfinding.HasReachedDestination())
+                    {
+                        currentWaypointIndex = (currentWaypointIndex + 1) % patrolWaypoints.Length;
+                        TransitionTo(State.Wait); // Petite pause entre chaque waypoint (optionnel)
+                    }
                 }
                 break;
 
-            case GuardState.Investigate:
-                MoveTo(lastKnownBanditPosition);
+            case State.Follow:
+                // Suivre la position actuelle du bandit
+                pathfinding.MoveTo(bandit.position);
                 break;
 
-            case GuardState.Chase:
-                MoveTo(bandit.position);
+            case State.Attack:
+                // S'arrêter et simuler une attaque (pas de déplacement A*)
+                // On pourrait déclencher une animation ici
                 break;
 
-            case GuardState.Flee:
-                // Fuir dans la direction opposée au bandit
+            case State.RunAway:
+                // Calculer un point de fuite à l'opposé du bandit
                 Vector3 fleeDirection = (transform.position - bandit.position).normalized;
-                Vector3 fleeTarget = transform.position + fleeDirection * 10f;
-                MoveTo(fleeTarget);
+                Vector3 fleeTarget = transform.position + (fleeDirection * 10f); // Fuir de 10 unités
+                pathfinding.MoveTo(fleeTarget);
                 break;
         }
-    }
-
-    void MoveTo(Vector3 targetPosition)
-    {
-        // Utiliser A* pour se déplacer vers la cible
-        // (On appellera pathfinding.FindPath(transform.position, targetPosition))
     }
 }

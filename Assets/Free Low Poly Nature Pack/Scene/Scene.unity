@@ -2965,6 +2965,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 8738495721609720183, guid: cf551a8bd10eb4a4abc34c01305ff4da, type: 3}
       insertIndex: -1
       addedObject: {fileID: 921805953}
+    - targetCorrespondingSourceObject: {fileID: 8738495721609720183, guid: cf551a8bd10eb4a4abc34c01305ff4da, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 921805954}
   m_SourcePrefab: {fileID: 100100000, guid: cf551a8bd10eb4a4abc34c01305ff4da, type: 3}
 --- !u!4 &921805952 stripped
 Transform:
@@ -3068,6 +3071,29 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &921805954
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 216503938}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc22a1351b5f6dd43b827ca09b4b979b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GuardFSM
+  bandit: {fileID: 1653927249}
+  pathfinding: {fileID: 1332001683}
+  patrolWaypoints:
+  - {fileID: 1302780733}
+  - {fileID: 963140534}
+  - {fileID: 773056220}
+  - {fileID: 1527681639}
+  distFar: 15
+  distMedium: 8
+  distClose: 3
+  waitDuration: 3
 --- !u!1001 &960177118
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4727,7 +4753,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AStarPathfinding
   grid: {fileID: 1667983629}
   agent: {fileID: 921805952}
-  defaultTarget: {fileID: 0}
+  defaultTarget: {fileID: 1875337236}
   moveSpeed: 5
   rotationSpeed: 10
   arrivalDistance: 0.5
@@ -6110,6 +6136,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Bandit
   moveSpeed: 3
+  isAttacking: 0
 --- !u!136 &1653927246
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -6199,7 +6226,7 @@ Transform:
   m_GameObject: {fileID: 1653927244}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2.74747, y: 0.76, z: 5.68}
+  m_LocalPosition: {x: -2.74747, y: 0.76, z: -10.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
