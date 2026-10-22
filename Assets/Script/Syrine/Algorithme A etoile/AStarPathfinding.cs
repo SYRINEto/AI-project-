@@ -10,15 +10,24 @@ public class AStarPathfinding : MonoBehaviour
     [Header("Paramètres de déplacement")]
     public float moveSpeed = 5f;
     public float rotationSpeed = 10f;
-
-    public float arrivalDistance = 0.5f;  // Distance pour considérer arrivé
+    public float arrivalDistance = 0.5f;
 
     [Header("Audio et Effets")]
     public AudioSource arrivalSound;
     public ParticleSystem arrivalParticles;
+
+    [Header("Visualisation A*")]
+    public bool showOpenSet = true;
+    public bool showClosedSet = true;
+    public bool showFinalPath = true;
+
     private List<Node> currentPath;
     private int currentPathIndex = 0;
     private bool hasArrived = false;
+
+    // Pour la visualisation
+    public List<Node> openSetVisual = new List<Node>();
+    public List<Node> closedSetVisual = new List<Node>();
 
     void Start()
     {
@@ -27,7 +36,6 @@ public class AStarPathfinding : MonoBehaviour
             Debug.LogError("La grille n'est pas initialisée !");
             return;
         }
-
         FindPath(agent.position, target.position);
     }
 
@@ -37,6 +45,15 @@ public class AStarPathfinding : MonoBehaviour
         {
             MoveAlongPath();
         }
+    }
+
+    // Fonction appelée par le gestionnaire d'obstacles dynamiques
+    public void RecalculatePath()
+    {
+        hasArrived = false;
+        currentPathIndex = 0;
+        FindPath(agent.position, target.position);
+        Debug.Log("?? A* a recalculé le chemin suite à un changement !");
     }
 
     public void FindPath(Vector3 startPos, Vector3 targetPos)
@@ -50,7 +67,7 @@ public class AStarPathfinding : MonoBehaviour
         openSet.Add(startNode);
 
         while (openSet.Count > 0)
-        {//La sélection du nœud avec le plus petit fCost  puis on le retire de la liste ouverte et on l'ajoute à la liste fermée
+        {
             Node currentNode = openSet[0];
             for (int i = 1; i < openSet.Count; i++)
             {
@@ -77,8 +94,7 @@ public class AStarPathfinding : MonoBehaviour
                     continue;
                 }
 
-                //  int newMovementCostToNeighbor = currentNode.gCost + GetDistance(currentNode, neighbor);
-                float newMovementCostToNeighbor = currentNode.gCost + GetDistance(currentNode, neighbor);
+                int newMovementCostToNeighbor = currentNode.gCost + GetDistance(currentNode, neighbor);
                 if (newMovementCostToNeighbor < neighbor.gCost || !openSet.Contains(neighbor))
                 {
                     neighbor.gCost = newMovementCostToNeighbor;
@@ -92,6 +108,10 @@ public class AStarPathfinding : MonoBehaviour
                 }
             }
         }
+
+        // Sauvegarde pour visualisation
+        openSetVisual = new List<Node>(openSet);
+        closedSetVisual = new List<Node>(closedSet);
     }
 
     void RetracePath(Node startNode, Node endNode)
@@ -107,14 +127,8 @@ public class AStarPathfinding : MonoBehaviour
         currentPath.Reverse();
         currentPathIndex = 0;
     }
-    //  la Distance Octile 
-    //agent à la position (2, 3) et la cible (feu de camp) est à (7, 6). 
-    //dstX = |7 - 2| = 5  (il faut avancer de 5 cases en X)
-    //dstZ = |6 - 3| = 3  (il faut avancer de 3 cases en Z)
-    // int GetDistance(Node nodeA, Node nodeB)
-    // AVANT : int GetDistance(...)
-    // APRÈS :
-    float GetDistance(Node nodeA, Node nodeB)
+
+    int GetDistance(Node nodeA, Node nodeB)
     {
         int dstX = Mathf.Abs(nodeA.gridX - nodeB.gridX);
         int dstZ = Mathf.Abs(nodeA.gridZ - nodeB.gridZ);
@@ -127,10 +141,7 @@ public class AStarPathfinding : MonoBehaviour
 
     void MoveAlongPath()
     {
-        if (currentPathIndex >= currentPath.Count)
-        {
-            return;
-        }
+        if (currentPathIndex >= currentPath.Count) return;
 
         Node targetNode = currentPath[currentPathIndex];
         Vector3 targetPosition = targetNode.worldPosition;
@@ -150,65 +161,49 @@ public class AStarPathfinding : MonoBehaviour
             currentPathIndex++;
         }
 
-        //érifie si l'agent est arrivé à la cible finale
         CheckArrival();
     }
-    public void RecalculatePath()
-    {
-        hasArrived = false;
-        currentPathIndex = 0;
 
-        // On relance le calcul du chemin depuis la position actuelle de l'agent
-        FindPath(agent.position, target.position);
-        Debug.Log("?? L'agent recalcule son chemin automatiquement !");
-    }
-    // Détecte l'arrivée et joue le son
     void CheckArrival()
     {
         if (hasArrived) return;
-
         float distanceToTarget = Vector3.Distance(agent.position, target.position);
-
-        // ? AJOUTE CETTE LIGNE POUR VOIR LA DISTANCE EN TEMPS RÉEL :
-        Debug.Log($"?? Distance au feu : {distanceToTarget:F2} mètres | Seuil : {arrivalDistance}");
-
         if (distanceToTarget <= arrivalDistance)
         {
             hasArrived = true;
             Debug.Log("?? L'agent a atteint l'objectif !");
-
-            if (arrivalSound != null) arrivalSound.Play();
             OnArrival();
         }
     }
 
-    // Actions à faire à l'arrivée
     void OnArrival()
     {
-        Debug.Log(" Le garde est arrivé au feu de camp !");
-
-        // Joue le son
-        if (arrivalSound != null)
-        {
-            arrivalSound.Play();
-        }
-        // Joue les particules
-        if (arrivalParticles != null)
-        {
-            arrivalParticles.Play();
-        }
+        if (arrivalSound != null) arrivalSound.Play();
+        if (arrivalParticles != null) arrivalParticles.Play();
     }
 
     void OnDrawGizmos()
     {
-        if (currentPath != null)
+        if (grid == null || grid.grid == null) return;
+
+        if (showOpenSet)
         {
+            Gizmos.color = new Color(1f, 1f, 0f, 0.3f);
+            foreach (Node node in openSetVisual) Gizmos.DrawCube(node.worldPosition, Vector3.one * 0.3f);
+        }
+        if (showClosedSet)
+        {
+            Gizmos.color = new Color(0f, 0.5f, 1f, 0.3f);
+            foreach (Node node in closedSetVisual) Gizmos.DrawCube(node.worldPosition, Vector3.one * 0.3f);
+        }
+        if (showFinalPath && currentPath != null)
+        {
+            Gizmos.color = Color.cyan;
             for (int i = 0; i < currentPath.Count; i++)
             {
-                Gizmos.color = Color.cyan;
-                Gizmos.DrawCube(currentPath[i].worldPosition, Vector3.one * 0.5f);
+                Gizmos.DrawCube(currentPath[i].worldPosition, Vector3.one * 0.4f);
+                if (i > 0) Gizmos.DrawLine(currentPath[i - 1].worldPosition, currentPath[i].worldPosition);
             }
         }
     }
 }
-

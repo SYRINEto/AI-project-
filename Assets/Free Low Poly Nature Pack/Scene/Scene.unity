@@ -4613,7 +4613,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1332001684}
   - component: {fileID: 1332001683}
-  - component: {fileID: 1332001685}
   m_Layer: 0
   m_Name: PathfindingManager
   m_TagString: Untagged
@@ -4641,6 +4640,9 @@ MonoBehaviour:
   arrivalDistance: 0.5
   arrivalSound: {fileID: 921805953}
   arrivalParticles: {fileID: 1183445241}
+  showOpenSet: 1
+  showClosedSet: 1
+  showFinalPath: 1
 --- !u!4 &1332001684
 Transform:
   m_ObjectHideFlags: 0
@@ -4656,23 +4658,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1332001685
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1332001682}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0160bfc7c9812b1499efb9da7c79a4aa, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DStarLitePathfinding
-  grid: {fileID: 1667983629}
-  agent: {fileID: 921805952}
-  target: {fileID: 1875337236}
-  moveSpeed: 5
-  arrivalDistance: 0.5
 --- !u!1001 &1333661801
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6005,6 +5990,8 @@ MonoBehaviour:
     m_Bits: 256
   walkableColor: {r: 0, g: 1, b: 0, a: 1}
   obstacleColor: {r: 1, g: 0, b: 0, a: 1}
+  showGHFText: 1
+  textSize: 0.1
   nodeDiameter: 0
   gridSizeXCount: 0
   gridSizeZCount: 0
@@ -7137,7 +7124,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1938671940}
-  - component: {fileID: 1938671939}
   m_Layer: 0
   m_Name: ObstacleManager
   m_TagString: Untagged
@@ -7145,24 +7131,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1938671939
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1938671938}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6cb8d112c22cec14c8fdeff35f029bae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DynamicObstacleManager
-  grid: {fileID: 1667983629}
-  pathfinding: {fileID: 1332001683}
-  agent: {fileID: 921805952}
-  obstaclePrefab: {fileID: 7633580349320347194, guid: 40ac6324dcb74a146a3baf247ddd3830, type: 3}
-  timeToSpawn: 3
-  timeToMove: 8
 --- !u!4 &1938671940
 Transform:
   m_ObjectHideFlags: 0

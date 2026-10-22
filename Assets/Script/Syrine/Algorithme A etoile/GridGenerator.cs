@@ -1,36 +1,38 @@
-using Mono.Cecil;
-using System.Collections.Generic;
 using UnityEngine;
-using static UnityEditor.Experimental.GraphView.GraphView;
-using static UnityEditor.Searcher.SearcherWindow.Alignment;
+using System.Collections.Generic;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public class GridGenerator : MonoBehaviour
 {
     [Header("Paramètres de la grille")]
-    public float gridSizeX = 20f;      // Largeur de la grille en unités
-    public float gridSizeZ = 20f;      // Profondeur de la grille en unités
-    public float nodeRadius = 0.5f;      // Rayon de chaque case (diamètre = 2)
-    public LayerMask obstacleMask;     // Layer des obstacles (arbres, maison, ....)
+    public float gridSizeX = 30f;      // Augmenté pour bien couvrir la zone
+    public float gridSizeZ = 30f;
+    public float nodeRadius = 0.5f;    // Cases de 1x1 unité
+    public LayerMask obstacleMask;
 
     [Header("Couleurs")]
     public Color walkableColor = Color.green;
     public Color obstacleColor = Color.red;
 
-    public Node[,] grid;               // La grille 2D de noeuds
-    public float nodeDiameter;         // Diamètre calculé automatiquement
-    public int gridSizeXCount;         // Nombre de cases en X
-    public int gridSizeZCount;         // Nombre de cases en Z
+    [Header("Affichage G/H/F")]
+    public bool showGHFText = true;
+    public float textSize = 0.1f;
 
-    void Awake()  // verif grille existe avant que A* essaie de l'utiliser
+    public Node[,] grid;
+    public float nodeDiameter;
+    public int gridSizeXCount;
+    public int gridSizeZCount;
+
+    void Awake()
     {
         nodeDiameter = nodeRadius * 2f;
         gridSizeXCount = Mathf.RoundToInt(gridSizeX / nodeDiameter);
         gridSizeZCount = Mathf.RoundToInt(gridSizeZ / nodeDiameter);
-
         CreateGrid();
     }
-    //Pour chaque case, on utilise un CheckSphere avec un LayerMask pour détecter auto les obstacles
-    //Si un obstacle est détecté, la case devient rouge (non-marchable), sinon elle reste verte." 
+
     void CreateGrid()
     {
         grid = new Node[gridSizeXCount, gridSizeZCount];
@@ -42,42 +44,34 @@ public class GridGenerator : MonoBehaviour
             {
                 Vector3 worldPoint = worldBottomLeft + Vector3.right * (x * nodeDiameter + nodeRadius) + Vector3.forward * (z * nodeDiameter + nodeRadius);
 
-                // Détection d'obstacle avec Raycast
+                // Détection d'obstacle
                 bool walkable = !Physics.CheckSphere(worldPoint, nodeRadius, obstacleMask);
-
                 grid[x, z] = new Node(worldPoint, x, z, walkable);
 
-                // Création visuelle du cube
-                CreateVisualNode(worldPoint, walkable);
+                // Création visuelle (optionnel, peut être lourd si la grille est grande)
+                // CreateVisualNode(worldPoint, walkable); 
             }
         }
     }
 
-    void CreateVisualNode(Vector3 position, bool walkable)
+    // Fonction pour mettre à jour un nœud dynamiquement (pour la Tâche 1)
+    public void UpdateNodeAt(Vector3 worldPosition)
     {
-        GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        cube.transform.position = position;
-        cube.transform.localScale = new Vector3(nodeDiameter, 0.1f, nodeDiameter);
-
-        // Couleur selon marchable ou non
-        Renderer renderer = cube.GetComponent<Renderer>();
-        Material mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        mat.color = walkable ? walkableColor : obstacleColor;
-        renderer.material = mat;
-        Destroy(cube.GetComponent<BoxCollider>());
+        Node node = NodeFromWorldPoint(worldPosition);
+        if (node != null)
+        {
+            node.isWalkable = !node.isWalkable;
+        }
     }
 
-    //  pour obtenir les voisins d'un noeud (utilisée par A*)
-   // où il peut aller.Elle retourne les 8 cases adjacentes (horizontales, verticales et diagonales)
     public List<Node> GetNeighbors(Node node)
     {
         List<Node> neighbors = new List<Node>();
-
         for (int x = -1; x <= 1; x++)
         {
             for (int z = -1; z <= 1; z++)
             {
-                if (x == 0 && z == 0) continue; // Skip le noeud lui-même
+                if (x == 0 && z == 0) continue;
 
                 int checkX = node.gridX + x;
                 int checkZ = node.gridZ + z;
@@ -88,11 +82,9 @@ public class GridGenerator : MonoBehaviour
                 }
             }
         }
-
         return neighbors;
     }
 
-    //  pour convertir une position monde en coordonnées de grille
     public Node NodeFromWorldPoint(Vector3 worldPosition)
     {
         float percentX = (worldPosition.x + gridSizeX / 2f) / gridSizeX;
@@ -106,24 +98,29 @@ public class GridGenerator : MonoBehaviour
         return grid[x, z];
     }
 
-    // Dessine la grille dans l'éditeur pour visualiser
     void OnDrawGizmos()
     {
         Gizmos.DrawWireCube(transform.position, new Vector3(gridSizeX, 1f, gridSizeZ));
     }
 
-
-    // Ajoutez ceci dans GridGenerator.cs
-    public void UpdateNodeAt(Vector3 worldPosition)
+#if UNITY_EDITOR
+    void OnDrawGizmosSelected()
     {
-        Node node = NodeFromWorldPoint(worldPosition);
-        if (node != null)
+        if (!showGHFText || grid == null) return;
+        for (int x = 0; x < gridSizeXCount; x++)
         {
-            // Inverse l'état marchable
-            node.isWalkable = !node.isWalkable;
+            for (int z = 0; z < gridSizeZCount; z++)
+            {
+                Node node = grid[x, z];
+                if (node.gCost == 0 && node.hCost == 0) continue;
 
-            // Met à jour la couleur visuelle pour le débogage
-            Debug.Log($"Case en {worldPosition} est maintenant {(node.isWalkable ? "Marchable" : "Obstacle")}");
+                Vector3 textPosition = node.worldPosition + Vector3.up * 0.5f;
+                string ghfText = $"G:{node.gCost} H:{node.hCost} F:{node.fCost}";
+
+                Handles.color = Color.white;
+                Handles.Label(textPosition, ghfText);
+            }
         }
-    } 
+    }
+#endif
 }
