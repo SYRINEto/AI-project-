@@ -6114,8 +6114,8 @@ GameObject:
   - component: {fileID: 1653927249}
   - component: {fileID: 1653927248}
   - component: {fileID: 1653927247}
+  - component: {fileID: 1653927250}
   - component: {fileID: 1653927246}
-  - component: {fileID: 1653927245}
   m_Layer: 0
   m_Name: Capsule
   m_TagString: Untagged
@@ -6123,20 +6123,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1653927245
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1653927244}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bebcf7d5c678fb642880b7a84e23bbc8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Bandit
-  moveSpeed: 3
-  isAttacking: 0
 --- !u!136 &1653927246
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -6232,6 +6218,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1653927250
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1653927244}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06b936d9ac50a6c4c8a1f92a9140ad8b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BanditController
+  moveSpeed: 3
+  isAttacking: 1
 --- !u!1 &1667983628
 GameObject:
   m_ObjectHideFlags: 0
