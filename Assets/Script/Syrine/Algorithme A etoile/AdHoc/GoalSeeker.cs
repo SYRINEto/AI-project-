@@ -114,8 +114,7 @@ public class GoalSeeker : MonoBehaviour
         Debug.Log("[AGENT] en route vers l'objectif. Il suit la grille (A*).");
     }
 
-    // Boucle principale : gère la riposte (Event 6), le blocage par le chasseur,
-    // l'arrivée, puis les modes (Objectif / Détour / Récupération).
+    // Boucle principale : riposte (Event 6), blocage par le chasseur, arrivée, puis les modes.
     void Update()
     {
         if (pathfinding == null || objective == null) return;
@@ -241,17 +240,48 @@ public class GoalSeeker : MonoBehaviour
             float halfZ = g.gridSizeZ / 2f - 1f;
             target.x = Mathf.Clamp(target.x, center.x - halfX, center.x + halfX);
             target.z = Mathf.Clamp(target.z, center.z - halfZ, center.z + halfZ);
-
-            // Et sur une case marchable.
-            Node node = g.NodeFromWorldPoint(target);
-            if (node != null) target = node.worldPosition;
         }
 
-        detourTarget = target;
+        detourTarget = FindWalkableDetour(target);
         detourTimer = detourDuration;
         CurrentMode = Mode.Detour;
 
         if (logTransitions) Debug.Log("[AGENT] ennemi trop proche -> détour.");
+    }
+
+    /// <summary>
+    /// Cherche la case marchable la plus proche autour du point voulu.
+    /// Sans ça, le détour peut viser un arbre : A* répond « cible inatteignable »
+    /// puis se replie sur n'importe quelle case, et l'Agent part au hasard.
+    /// </summary>
+    Vector3 FindWalkableDetour(Vector3 wanted)
+    {
+        if (pathfinding.grid == null) return wanted;
+
+        GridGenerator g = pathfinding.grid;
+        Node start = g.NodeFromWorldPoint(transform.position);
+        Node best = null;
+        float bestScore = float.MaxValue;
+
+        // On regarde les cases autour du point voulu (rayon de 5 cases).
+        for (int dx = -5; dx <= 5; dx++)
+        {
+            for (int dz = -5; dz <= 5; dz++)
+            {
+                Node n = g.NodeFromWorldPoint(wanted + new Vector3(dx, 0f, dz));
+                if (n == null || !n.isWalkable) continue;
+
+                float score = Vector3.Distance(n.worldPosition, wanted);
+                if (start != null && start == n) score += 2f;   // on évite de rester sur place
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best = n;
+                }
+            }
+        }
+
+        return best != null ? best.worldPosition : transform.position;
     }
 
     void EnterRecover()
