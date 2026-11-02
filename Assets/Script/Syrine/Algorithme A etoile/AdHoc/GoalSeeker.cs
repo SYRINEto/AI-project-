@@ -6,12 +6,14 @@ using UnityEngine;
 /// Rôles dans la scène :
 ///   - « Agent »   = celui qui cherche à rejoindre l'objectif (feu de camp) ;
 ///   - « Capsule » = le bandit (GuardFSM) : il le poursuit, l'attaque et
-///                   l'empêche d'arriver.
+///                   l'empêche d'arriver ;
+///   - « MCTSChaser » = le chasseur du chapitre 4 : il lui coupe la route.
 ///
 /// Ce script ne contient AUCUN algorithme : il dit simplement à
-/// l'AStarPathfinding « va vers l'objectif », et il réagit au bandit :
+/// l'AStarPathfinding « va vers l'objectif », et il réagit aux deux ennemis :
 ///   - le bandit s'approche trop  -> l'Agent fait un détour (il ne passe pas) ;
-///   - le bandit l'attaque        -> l'Agent riposte (PP_attacking, Event 6).
+///   - le bandit l'attaque        -> l'Agent riposte (PP_attacking, Event 6) ;
+///   - le chasseur le touche      -> l'Agent est bloqué 1,5 s.
 ///
 /// L'A* peut être sur ce GameObject OU sur « PathfindingManager » : dans les
 /// deux cas, c'est l'Agent qui est déplacé (Agent = ce transform).
@@ -35,6 +37,18 @@ public class GoalSeeker : MonoBehaviour
     public float recoverDelay = 1.5f;
     [Tooltip("Distance à laquelle l'objectif est considéré comme atteint.")]
     public float arriveDistance = 2f;
+
+    [Header("Face au chasseur MCTS")]
+    [Tooltip("Il se bloque quand le chasseur MCTS l'attrape (sinon le MCTS n'a aucun effet).")]
+    public bool blockedByChaser = true;
+    [Tooltip("Détour quand le chasseur approche. Plus petit que pour le bandit : sinon il ne le touche jamais.")]
+    public float chaserDangerDistance = 2.2f;
+    [Tooltip("Durée du blocage quand le chasseur le touche.")]
+    public float caughtDuration = 1.5f;
+    [Tooltip("Temps mini entre deux blocages (sinon il est bloqué en permanence).")]
+    public float catchCooldown = 4f;
+
+    [Header("Riposte (Event 6)")]
     [Tooltip("L'Agent riposte quand le bandit l'attaque (=> Event 6 : le bandit fuit).")]
     public bool fightBack = true;
     [Tooltip("Durée de la riposte.")]
@@ -48,7 +62,7 @@ public class GoalSeeker : MonoBehaviour
     public enum Mode
     {
         ToObjective,   // il marche vers l'objectif
-        Detour,        // il s'écarte du bandit
+        Detour,        // il s'écarte du bandit / du chasseur
         Recover        // il attend, puis repart
     }
 
@@ -63,7 +77,11 @@ public class GoalSeeker : MonoBehaviour
     float recoverTimer;
     float attackTimer;
     float attackCooldown;
+    float caughtTimer;
+    float catchCooldownTimer;
+    MCTSChaser chaser;
 
+    // Initialisation : lie l'Agent à A* et lance le premier chemin vers l'objectif (feu de camp).
     void Start()
     {
         if (pathfinding == null) pathfinding = GetComponent<AStarPathfinding>();
@@ -90,10 +108,14 @@ public class GoalSeeker : MonoBehaviour
             return;
         }
 
+        chaser = FindFirstObjectByType<MCTSChaser>();
+
         pathfinding.MoveTo(objective.position);
         Debug.Log("[AGENT] en route vers l'objectif. Il suit la grille (A*).");
     }
 
+    // Boucle principale : gère la riposte (Event 6), le blocage par le chasseur,
+    // l'arrivée, puis les modes (Objectif / Détour / Récupération).
     void Update()
     {
         if (pathfinding == null || objective == null) return;
@@ -123,6 +145,25 @@ public class GoalSeeker : MonoBehaviour
         if (attackTimer > 0f) attackTimer -= dt;
         isAttacking = attackTimer > 0f;
 
+        // ---- le chasseur MCTS l'a attrapé : il est bloqué un instant ----
+        if (blockedByChaser && chaser != null)
+        {
+            float dChaser = Vector3.Distance(transform.position, chaser.transform.position);
+            if (dChaser <= chaser.catchDistance && caughtTimer <= 0f && catchCooldownTimer <= 0f)
+            {
+                caughtTimer = caughtDuration;
+                catchCooldownTimer = catchCooldown;
+                Debug.Log("[AGENT] attrapé par le chasseur MCTS -> bloqué 1,5 s.");
+            }
+            catchCooldownTimer -= dt;
+        }
+        if (caughtTimer > 0f)
+        {
+            caughtTimer -= dt;
+            pathfinding.Stop();
+            return;
+        }
+
         // ---- objectif atteint ----
         if (!HasArrived && Vector3.Distance(transform.position, objective.position) <= arriveDistance)
         {
@@ -140,6 +181,11 @@ public class GoalSeeker : MonoBehaviour
                 if (banditT != null && distanceToBandit <= dangerDistance)
                 {
                     StartDetour(banditT);
+                }
+                else if (chaser != null &&
+                         Vector3.Distance(transform.position, chaser.transform.position) <= chaserDangerDistance)
+                {
+                    StartDetour(chaser.transform);
                 }
                 break;
 
@@ -177,10 +223,10 @@ public class GoalSeeker : MonoBehaviour
         }
     }
 
-    /// <summary>Point à l'opposé du bandit, ramené sur une case marchable de la grille.</summary>
-    void StartDetour(Transform bandit)
+    /// <summary>Point à l'opposé de l'ennemi, ramené sur une case marchable de la grille.</summary>
+    void StartDetour(Transform ennemi)
     {
-        Vector3 away = transform.position - bandit.position;
+        Vector3 away = transform.position - ennemi.position;
         away.y = 0f;
         if (away.sqrMagnitude < 0.01f) away = transform.forward;
         Vector3 target = transform.position + away.normalized * detourDistance;
@@ -205,7 +251,7 @@ public class GoalSeeker : MonoBehaviour
         detourTimer = detourDuration;
         CurrentMode = Mode.Detour;
 
-        if (logTransitions) Debug.Log("[AGENT] bandit trop proche -> détour.");
+        if (logTransitions) Debug.Log("[AGENT] ennemi trop proche -> détour.");
     }
 
     void EnterRecover()

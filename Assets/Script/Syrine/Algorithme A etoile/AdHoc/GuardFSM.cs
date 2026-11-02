@@ -95,6 +95,9 @@ public class GuardFSM : MonoBehaviour
 
     public State CurrentState => currentState;
 
+
+
+// Gère la transition : reset les timers, log le changement, et prépare les cibles (ex: point de fuite).
     void Start()
     {
         if (player == null)
@@ -125,6 +128,8 @@ public class GuardFSM : MonoBehaviour
         EnterState(State.Wait, true);
     }
 
+
+// Cœur de la FSM : évalue les distances (Events 1 à 4) et l'Event 6 (PP_attacking) pour déclencher les transitions.
     void Update()
     {
         float dt = Time.deltaTime;
@@ -269,13 +274,14 @@ public class GuardFSM : MonoBehaviour
         }
     }
 
-    // ---------------- COMPORTEMENT (déplacement en ligne droite) ----------------
+
+
+// Exécute l'action de l'état actuel. Le bandit se déplace en ligne droite (aucun pathfinding A*).
     void ExecuteBehavior(float dt)
     {
         switch (currentState)
         {
             case State.Wait:
-                // immobile : le PNJ attend dans son environnement (diapo 8)
                 break;
 
             case State.Move:
@@ -305,7 +311,7 @@ public class GuardFSM : MonoBehaviour
         }
     }
 
-    /// <summary>Avance en ligne droite vers une position (aucun pathfinding).</summary>
+    // Déplacement vectoriel simple en ligne droite vers une cible (ignorer les obstacles).
     void MoveTowards(Vector3 destination, float dt)
     {
         Vector3 flat = destination - transform.position;
