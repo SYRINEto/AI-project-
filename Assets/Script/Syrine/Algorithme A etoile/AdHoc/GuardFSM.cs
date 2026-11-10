@@ -75,8 +75,13 @@ public class GuardFSM : MonoBehaviour
     public float runAwayDistance = 10f;      // distance du point de fuite
     public float stateCooldown = 0.4f;       // anti-clignotement entre deux transitions
 
-    [Header("Débogage")]
+     [Header("Débogage")]
     public bool logTransitions = true;
+
+    [Tooltip("Temps de la dernière décision (ms) — lu par ComparisonHUD.")]
+    public float lastDecisionMs;
+    [Tooltip("Nombre de décisions prises depuis le début.")]
+    public int decisionCount;
 
     State currentState = State.Wait;
     float waitTimer;
@@ -130,8 +135,9 @@ public class GuardFSM : MonoBehaviour
 
 
 // Cœur de la FSM : évalue les distances (Events 1 à 4) et l'Event 6 (PP_attacking) pour déclencher les transitions.
-    void Update()
+        void Update()
     {
+        var chrono = System.Diagnostics.Stopwatch.StartNew();
         float dt = Time.deltaTime;
         cooldownTimer -= dt;
         attackCooldownTimer -= dt;
@@ -237,7 +243,11 @@ public class GuardFSM : MonoBehaviour
                 break;
         }
 
-        ExecuteBehavior(dt);
+            ExecuteBehavior(dt);
+
+        chrono.Stop();
+        lastDecisionMs = (float)chrono.Elapsed.TotalMilliseconds;
+        decisionCount++;
     }
 
     /// <summary>Change d'état, remet les timers, prépare la destination.</summary>

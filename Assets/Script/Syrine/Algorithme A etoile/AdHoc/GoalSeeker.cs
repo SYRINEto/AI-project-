@@ -56,8 +56,14 @@ public class GoalSeeker : MonoBehaviour
     [Tooltip("Pause entre deux ripostes (sinon le bandit fuit en permanence).")]
     public float fightBackCooldown = 6f;
 
-    [Header("Débogage")]
+        [Header("Débogage")]
     public bool logTransitions = true;
+
+    [Header("Mesures (soutenance)")]
+    [Tooltip("Temps du dernier vrai recalcul A* (ms) — lu par ComparisonHUD.")]
+    public float lastDecisionMs;
+    [Tooltip("Nombre de recalculs A* depuis le début.")]
+    public int decisionCount;
 
     public enum Mode
     {
@@ -208,13 +214,31 @@ public class GoalSeeker : MonoBehaviour
         }
 
         // ---------------- COMPORTEMENT ----------------
+        // On ne chronomètre que le VRAI recalcul A* (MoveTo ne recalcule que si
+        // la destination change) — sinon on mesurerait une comparaison de Vector3.
+        int before = pathfinding.searchCount;
+
         if (CurrentMode == Mode.ToObjective)
         {
+            var chrono = System.Diagnostics.Stopwatch.StartNew();
             pathfinding.MoveTo(objective.position);
+            chrono.Stop();
+            if (pathfinding.searchCount != before)
+            {
+                lastDecisionMs = (float)chrono.Elapsed.TotalMilliseconds;
+                decisionCount++;
+            }
         }
         else if (CurrentMode == Mode.Detour)
         {
+            var chrono = System.Diagnostics.Stopwatch.StartNew();
             pathfinding.MoveTo(detourTarget);
+            chrono.Stop();
+            if (pathfinding.searchCount != before)
+            {
+                lastDecisionMs = (float)chrono.Elapsed.TotalMilliseconds;
+                decisionCount++;
+            }
         }
         else
         {

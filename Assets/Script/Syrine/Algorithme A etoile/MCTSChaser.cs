@@ -4,25 +4,25 @@ using UnityEngine;
 /// <summary>
 /// MONTE CARLO TREE SEARCH (chapitre 4) — le « chasseur ».
 ///
-/// Rôles dans la scène :
-///   - Le chasseur ne suit AUCUNE règle écrite (pas de « si distance < 3 alors attaque »).
-///     À chaque décision il SIMULE des centaines de parties au hasard dans sa tête,
+/// Roles dans la scene :
+///   - Le chasseur ne suit AUCUNE regle ecrite (pas de « si distance < 3 alors attaque »).
+///     a chaque decision il SIMULE des centaines de parties au hasard dans sa tete,
 ///     puis joue le coup qui a le meilleur taux de victoire.
 ///   - Contrairement au bandit (GuardFSM, chapitre 3), il n'attaque personne :
 ///     son objectif est de bloquer le chemin de l'Agent vers le feu de camp.
-///   - Il se déplace sur LA MÊME grille que l'Agent (GridGenerator / Node).
+///   - Il se deplace sur LA MeME grille que l'Agent (GridGenerator / Node).
 ///
-/// Les 4 étapes du cours, dans l'ordre :
-///   1. Sélection          -> on descend dans l'arbre avec la formule UCB
-///   2. Expansion          -> on ajoute un enfant non visité (marqué 0/0)
-///   3. Simulation         -> on joue une partie jusqu'à la fin
-///   4. Rétropropagation   -> on remonte le résultat jusqu'à la racine
+/// Les 4 etapes du cours, dans l'ordre :
+///   1. Selection          -> on descend dans l'arbre avec la formule UCB
+///   2. Expansion          -> on ajoute un enfant non visite (marque 0/0)
+///   3. Simulation         -> on joue une partie jusqu'a la fin
+///   4. Retropropagation   -> on remonte le resultat jusqu'a la racine
 ///
 /// La formule UCB du diapo :
 ///   UCB = (w / n) + c * sqrt( ln(t) / n )
-///   w = victoires du nœud · n = visites du nœud · t = visites du parent · c = constante
-///   - w/n            = EXPLOITATION (les branches qui ont déjà gagné)
-///   - c*sqrt(...)    = EXPLORATION  (les branches encore peu visitées)
+///   w = victoires du noeud . n = visites du noed . t = visites du parent . c = constante
+///   - w/n            = EXPLOITATION (les branches qui ont deja gagne)
+///   - c*sqrt(...)    = EXPLORATION  (les branches encore peu visitees)
 /// </summary>
 [DisallowMultipleComponent]
 public class MCTSChaser : MonoBehaviour
@@ -72,6 +72,12 @@ public class MCTSChaser : MonoBehaviour
     [Tooltip("Position de la case que le chasseur a décidé de rejoindre.")]
     public Vector3 lastChosenTarget;
     public int totalSimulations;
+    [Tooltip("Nœuds de l'arbre à la dernière décision (mémoire).")]
+    public int lastTreeNodes;
+    [Tooltip("Temps de la dernière décision, en millisecondes.")]
+    public float lastDecisionMs;
+    [Tooltip("Nombre de décisions prises depuis le début.")]
+    public int decisionCount;
 
     MCTSNode root;
     float decisionTimer;
@@ -129,9 +135,10 @@ public class MCTSChaser : MonoBehaviour
     // =====================================================================
     // LA DÉCISION : MCTS complet
     // =====================================================================
-    void Decision()
+        void Decision()
     {
-        // On repart de la case courante : l'arbre d'avant n'est plus valable
+        var chrono = System.Diagnostics.Stopwatch.StartNew();
+        // On repart de la case courante
         // (l'Agent a bougé). C'est le compromis vitesse / qualité.
         root = new MCTSNode(null, transform.position, transform.position, LegalActions(transform.position));
         root.visits = 1;
@@ -146,6 +153,7 @@ public class MCTSChaser : MonoBehaviour
         lastIterations = done;
         totalSimulations += done;
         lastRootVisits = root.visits;
+        lastTreeNodes = CountNodes(root);
 
         // On joue le fils le plus visité (= le coup le plus sûr).
         MCTSNode best = null;
@@ -172,6 +180,19 @@ public class MCTSChaser : MonoBehaviour
                 Debug.Log($"[MCTS] {done} simulations · coup choisi {lastChosenAction}");
             }
         }
+
+        chrono.Stop();
+        lastDecisionMs = (float)chrono.Elapsed.TotalMilliseconds;
+        decisionCount++;
+    }
+
+        /// <summary>Compte les nœuds de l'arbre (pour mesurer la mémoire utilisée).</summary>
+    int CountNodes(MCTSNode node)
+    {
+        if (node == null) return 0;
+        int count = 1;
+        foreach (MCTSNode child in node.children) count += CountNodes(child);
+        return count;
     }
 
     /// <summary>Une itération = les 4 étapes du cours.</summary>
